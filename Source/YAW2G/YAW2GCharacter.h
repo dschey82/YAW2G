@@ -174,8 +174,6 @@ public:
 	UPROPERTY(ReplicatedUsing=OnRep_Health)
 	float Health;
 
-	bool CooldownTracker = false;
-
 	float TakeDamage
 	(
 		float DamageAmount,

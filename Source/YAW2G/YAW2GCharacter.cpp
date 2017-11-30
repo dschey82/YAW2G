@@ -85,6 +85,7 @@ AYAW2GCharacter::AYAW2GCharacter()
 	//bUsingMotionControllers = true;
 
 	Health = 100;
+
 }
 
 void AYAW2GCharacter::BeginPlay()
@@ -106,6 +107,8 @@ void AYAW2GCharacter::BeginPlay()
 		VR_Gun->SetHiddenInGame(true, true);
 		Mesh1P->SetHiddenInGame(false, true);
 	}
+
+	if (Controller) Controller->SetControlRotation(GetActorRotation());
 }
 
 //////////////////////////////////////////////////////////////////////////

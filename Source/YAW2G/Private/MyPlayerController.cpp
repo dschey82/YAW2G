@@ -16,7 +16,7 @@ void AMyPlayerController::Respawn()
 	AGameModeBase * GameMode = GetWorld()->GetAuthGameMode();
 	if (GameMode)
 	{
-		APawn * NewPawn = GameMode->SpawnDefaultPawnFor(this, StartSpot.Get());
+		APawn * NewPawn = GameMode->SpawnDefaultPawnFor(this, GameMode->ChoosePlayerStart(this));
 		Possess(NewPawn);
 	}
 }

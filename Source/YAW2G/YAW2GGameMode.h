@@ -13,6 +13,12 @@ class AYAW2GGameMode : public AGameModeBase
 
 public:
 	AYAW2GGameMode();
+
+	void PostLogin(APlayerController * NewPlayer) override;
+
+	AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+
+	bool ShouldSpawnAtStartSpot(AController* Player) override;
 };
 
 

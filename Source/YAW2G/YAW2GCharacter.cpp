@@ -12,6 +12,8 @@
 #include "MotionControllerComponent.h"
 #include "UnrealNetwork.h"
 #include "MyPlayerController.h"
+#include "InventoryComponent.h"
+#include "WeaponStatsComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
@@ -84,7 +86,14 @@ AYAW2GCharacter::AYAW2GCharacter()
 	// Uncomment the following line to turn motion controllers on by default:
 	//bUsingMotionControllers = true;
 
-	Health = 100;
+	PlayerInventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
+	PlayerInventoryComponent->InitializePlayerAmmoCount();
+
+	WeaponStatsComponent = CreateDefaultSubobject<UWeaponStatsComponent>(TEXT("WeaponStatsComponent"));
+
+	GetCapsuleComponent()->bGenerateOverlapEvents = true;
+
+	Health = 100.0f;
 
 }
 
@@ -92,6 +101,8 @@ void AYAW2GCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
+
+	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &AYAW2GCharacter::OnOverlapBegin);
 
 	//Attach gun mesh component to Skeleton, doing it here because the skeleton is not yet created in the constructor
 	FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
@@ -114,12 +125,27 @@ void AYAW2GCharacter::BeginPlay()
 //////////////////////////////////////////////////////////////////////////
 // Input
 
+void AYAW2GCharacter::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (OtherActor->GetClass()->IsChildOf(AYaw2GWeapon::StaticClass()))
+	{
+		FSWeaponStats returnStats;
+		AYaw2GWeapon * weapon = Cast<AYaw2GWeapon>(OtherActor);
+		if (weapon != nullptr)
+		{
+			CurrentWeaponStats = weapon->GetWeaponStats();
+		}
+		if(WeaponStatsComponent) WeaponStatsComponent->SetWeaponStats(CurrentWeaponStats);
+
+		PlayerInventoryComponent->IncreaseReserveAmmo(CurrentWeaponStats.AmmoType, 30);
+		return;
+	}
+}
+
 void AYAW2GCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
 	// set up gameplay key bindings
 	check(PlayerInputComponent);
-
-
 
 	// Bind jump events
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
@@ -128,6 +154,9 @@ void AYAW2GCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInp
 	// Bind fire event
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AYAW2GCharacter::StartFiring);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &AYAW2GCharacter::StopFiring);
+
+	// Bind reload event
+	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &AYAW2GCharacter::Reload);
 
 	// Enable touchscreen input
 	EnableTouchscreenMovement(PlayerInputComponent);
@@ -151,6 +180,8 @@ void AYAW2GCharacter::OnFire()
 {
 	if (Task != ETaskEnum::Fire) return;
 
+			
+
 	// try and fire a projectile
 	if (ProjectileClass != NULL)
 	{
@@ -172,9 +203,12 @@ void AYAW2GCharacter::OnFire()
 				//Set Spawn Collision Handling Override
 				FActorSpawnParameters ActorSpawnParams;
 				ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
+				ActorSpawnParams.Instigator = this;
 
-				// spawn the projectile at the muzzle
+				// spawn the projectile at the muzzle				
 				World->SpawnActor<AYAW2GProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+				WeaponStatsComponent->DecrementLoadedAmmo();
+				if (WeaponStatsComponent->GetLoadedAmmo() == 0) Task = ETaskEnum::None;
 			}
 		}
 	}
@@ -195,8 +229,24 @@ void AYAW2GCharacter::OnFire()
 			AnimInstance->Montage_Play(FireAnimation, 1.f);
 		}
 	}
+	//UE_LOG(LogTemp, Warning, TEXT("StartingTimer for %f"), (float)WeaponStatsComponent->GetWeaponStats().FireDelay / 1000.f);
+	GetWorldTimerManager().SetTimer(TimerHandle_Task, this, &AYAW2GCharacter::OnFire, (float)(CurrentWeaponStats.FireDelay / 1000.f));
+}
 
-	GetWorldTimerManager().SetTimer(TimerHandle_Task, this, &AYAW2GCharacter::OnFire, 1.2f);
+void AYAW2GCharacter::Reload()
+{
+	currentAmmoLoaded = WeaponStatsComponent->GetLoadedAmmo();
+	if (PlayerInventoryComponent->GetReserveAmmoCount(CurrentWeaponStats.AmmoType) > 0 && currentAmmoLoaded < CurrentWeaponStats.MaxLoadedAmmo)
+	{
+		WeaponStatsComponent->ReloadWeapon(PlayerInventoryComponent->DecreaseReserveAmmo(CurrentWeaponStats.AmmoType, CurrentWeaponStats.MaxLoadedAmmo - currentAmmoLoaded));
+	}
+	Task = ETaskEnum::Reload;
+	GetWorldTimerManager().SetTimer(TimerHandle_Reload, this, &AYAW2GCharacter::EndReload, (float)(CurrentWeaponStats.ReloadDelay / 1000.f));
+}
+
+void AYAW2GCharacter::EndReload()
+{
+	Task = ETaskEnum::None;
 }
 
 void AYAW2GCharacter::OnResetVR()
@@ -347,6 +397,7 @@ void AYAW2GCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & Out
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AYAW2GCharacter, Task);
+	DOREPLIFETIME(AYAW2GCharacter, Health);
 }
 
 void AYAW2GCharacter::PerformTask(ETaskEnum::Type NewTask)
@@ -362,6 +413,11 @@ void AYAW2GCharacter::PerformTask(ETaskEnum::Type NewTask)
 
 void AYAW2GCharacter::StartFiring()
 {
+	// If Reloading
+	if (Task == ETaskEnum::Reload) return;
+
+	// If fire delay timer is still active
+	/// TODO: refactor so that clicking before fire delay ends re-engages firing on automatic weapons
 	if (TimerHandle_Task.IsValid() && GetWorldTimerManager().GetTimerRemaining(TimerHandle_Task) > 0.f)
 	{
 		return;
@@ -388,6 +444,7 @@ bool AYAW2GCharacter::ServerPerformTask_Validate(ETaskEnum::Type NewTask)
 float AYAW2GCharacter::TakeDamage(float DamageAmount,struct FDamageEvent const & DamageEvent,class AController * EventInstigator,AActor * DamageCauser)
 {
 	Health -= DamageAmount;
+	
 	if (Health <= 0.f)
 	{
 		AMyPlayerController * PC = Cast<AMyPlayerController>(Controller);
@@ -405,5 +462,25 @@ float AYAW2GCharacter::TakeDamage(float DamageAmount,struct FDamageEvent const &
 
 void AYAW2GCharacter::OnRep_Health()
 {
-	
+
+}
+
+int AYAW2GCharacter::GetAmmoCountBP() const
+{
+	return WeaponStatsComponent->GetLoadedAmmo();
+}
+
+int AYAW2GCharacter::GetReserveAmmoCountBP() const
+{
+	return PlayerInventoryComponent->GetReserveAmmoCount(CurrentWeaponStats.AmmoType);
+}
+
+float AYAW2GCharacter::GetReloadTimerPercentBP() const
+{
+	return (float)(GetWorldTimerManager().GetTimerRemaining(TimerHandle_Reload) / CurrentWeaponStats.ReloadDelay);
+}
+
+float AYAW2GCharacter::GetHealthPercent() const
+{
+	return Health / 100.f;
 }

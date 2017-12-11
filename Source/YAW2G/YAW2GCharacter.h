@@ -4,9 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Yaw2GWeapon.h"
 #include "YAW2GCharacter.generated.h"
 
 class UInputComponent;
+class UInventoryComponent;
 
 UENUM()
 namespace ETaskEnum
@@ -23,6 +25,14 @@ UCLASS(config=Game)
 class AYAW2GCharacter : public ACharacter
 {
 	GENERATED_BODY()
+
+	UFUNCTION()
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	FSWeaponStats CurrentWeaponStats; // cache weapon stats to reduce function calls to component
+
+	UInventoryComponent* PlayerInventoryComponent;
+	UWeaponStatsComponent* WeaponStatsComponent;
 
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
 	UPROPERTY(VisibleDefaultsOnly, Category=Mesh)
@@ -58,6 +68,9 @@ class AYAW2GCharacter : public ACharacter
 
 	UPROPERTY(ReplicatedUsing=OnRep_Task)
 	TEnumAsByte<ETaskEnum::Type> Task;
+
+	uint16 currentAmmoLoaded;
+
 
 public:
 	AYAW2GCharacter();
@@ -96,6 +109,7 @@ public:
 
 protected:
 	FTimerHandle TimerHandle_Task;
+	FTimerHandle TimerHandle_Reload;
 
 	void StartFiring();
 	void StopFiring();
@@ -108,6 +122,9 @@ protected:
 	
 	/** Fires a projectile. */
 	void OnFire();
+	
+	void Reload();
+	void EndReload();
 
 	/** Resets HMD orientation and position in VR. */
 	void OnResetVR();
@@ -171,8 +188,11 @@ public:
 	UFUNCTION()
 	void OnRep_Health();
 
-	UPROPERTY(ReplicatedUsing=OnRep_Health)
+	UPROPERTY(EditAnywhere, ReplicatedUsing=OnRep_Health)
 	float Health;
+
+	UFUNCTION(BlueprintCallable)
+	float GetHealthPercent() const;
 
 	float TakeDamage
 	(
@@ -183,6 +203,15 @@ public:
 	) override;
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const override;
+
+	UFUNCTION(BlueprintCallable)
+	int GetAmmoCountBP() const;
+
+	UFUNCTION(BlueprintCallable)
+	int GetReserveAmmoCountBP() const;
+
+	UFUNCTION(BlueprintCallable)
+	float GetReloadTimerPercentBP() const;
 
 };
 

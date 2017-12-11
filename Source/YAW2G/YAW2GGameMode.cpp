@@ -75,7 +75,6 @@ AActor * AYAW2GGameMode::ChoosePlayerStart_Implementation(AController * Player)
 			TArray<AMyPlayerStart *> Starts;
 			for (TActorIterator<AMyPlayerStart> StartItr(GetWorld()); StartItr; ++StartItr)
 			{
-				//UE_LOG(LogTemp, Warning, TEXT("%d. Spawn: %s Player: %s"), StartItr.GetProgressNumerator(), (StartItr->bTeamAxis ? TEXT("AXIS") : TEXT("ALLIES")), (PS->bTeamAxis ? TEXT("AXIS") : TEXT("ALLIES")));
 				if (StartItr->bTeamAxis == PS->bTeamAxis)
 				{					
 					Starts.Add(*StartItr);

@@ -69,6 +69,9 @@ class AYAW2GCharacter : public ACharacter
 	UPROPERTY(ReplicatedUsing=OnRep_Task)
 	TEnumAsByte<ETaskEnum::Type> Task;
 
+	UPROPERTY(ReplicatedUsing = OnRep_WalkSpeed)
+	float CurrentMaxWalkSpeed;
+
 	uint16 currentAmmoLoaded;
 
 
@@ -113,12 +116,22 @@ protected:
 
 	void StartFiring();
 	void StopFiring();
+
+	void StartSprinting();
+	void StopSprinting();
+
+	void StartCrouching();
+	void StopCrouching();
 	
 	void PerformTask(ETaskEnum::Type NewTask);
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerPerformTask(ETaskEnum::Type NewTask);
 	
+	void UpdateWalkSpeed(float NewWalkSpeed);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerUpdateWalkSpeed(float NewWalkSpeed);
 	
 	/** Fires a projectile. */
 	void OnFire();
@@ -130,7 +143,7 @@ protected:
 	void OnResetVR();
 
 	/** Handles moving forward/backward */
-	void MoveForward(float Val);
+	void MoveForward(float Val);	
 
 	/** Handles stafing movement, left and right */
 	void MoveRight(float Val);
@@ -187,6 +200,9 @@ public:
 
 	UFUNCTION()
 	void OnRep_Health();
+
+	UFUNCTION()
+	void OnRep_WalkSpeed();
 
 	UPROPERTY(EditAnywhere, ReplicatedUsing=OnRep_Health)
 	float Health;

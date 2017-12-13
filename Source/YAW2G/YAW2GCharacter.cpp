@@ -14,6 +14,7 @@
 #include "MyPlayerController.h"
 #include "InventoryComponent.h"
 #include "WeaponStatsComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
@@ -158,6 +159,14 @@ void AYAW2GCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInp
 	// Bind reload event
 	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &AYAW2GCharacter::Reload);
 
+	// Bind sprint event
+	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &AYAW2GCharacter::StartSprinting);
+	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &AYAW2GCharacter::StopSprinting);
+
+	// Bind crouch event
+	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &AYAW2GCharacter::StartCrouching);
+	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &AYAW2GCharacter::StopCrouching);
+
 	// Enable touchscreen input
 	EnableTouchscreenMovement(PlayerInputComponent);
 
@@ -178,9 +187,7 @@ void AYAW2GCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInp
 
 void AYAW2GCharacter::OnFire()
 {
-	if (Task != ETaskEnum::Fire) return;
-
-			
+	if (Task != ETaskEnum::Fire) return;			
 
 	// try and fire a projectile
 	if (ProjectileClass != NULL)
@@ -239,9 +246,9 @@ void AYAW2GCharacter::Reload()
 	if (PlayerInventoryComponent->GetReserveAmmoCount(CurrentWeaponStats.AmmoType) > 0 && currentAmmoLoaded < CurrentWeaponStats.MaxLoadedAmmo)
 	{
 		WeaponStatsComponent->ReloadWeapon(PlayerInventoryComponent->DecreaseReserveAmmo(CurrentWeaponStats.AmmoType, CurrentWeaponStats.MaxLoadedAmmo - currentAmmoLoaded));
-	}
-	Task = ETaskEnum::Reload;
-	GetWorldTimerManager().SetTimer(TimerHandle_Reload, this, &AYAW2GCharacter::EndReload, (float)(CurrentWeaponStats.ReloadDelay / 1000.f));
+		Task = ETaskEnum::Reload;
+		GetWorldTimerManager().SetTimer(TimerHandle_Reload, this, &AYAW2GCharacter::EndReload, (float)(CurrentWeaponStats.ReloadDelay / 1000.f));
+	}	
 }
 
 void AYAW2GCharacter::EndReload()
@@ -322,7 +329,7 @@ void AYAW2GCharacter::MoveForward(float Value)
 	if (Value != 0.0f)
 	{
 		// add movement in that direction
-		AddMovementInput(GetActorForwardVector(), Value);
+		AddMovementInput(GetActorForwardVector(), Value, true);		
 	}
 }
 
@@ -398,23 +405,13 @@ void AYAW2GCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & Out
 
 	DOREPLIFETIME(AYAW2GCharacter, Task);
 	DOREPLIFETIME(AYAW2GCharacter, Health);
-}
-
-void AYAW2GCharacter::PerformTask(ETaskEnum::Type NewTask)
-{
-	if (GetNetMode() == NM_Client)
-	{
-		ServerPerformTask(NewTask);
-		return;
-	}
-	Task = NewTask;
-	OnRep_Task();
+	DOREPLIFETIME(AYAW2GCharacter, CurrentMaxWalkSpeed);
 }
 
 void AYAW2GCharacter::StartFiring()
 {
 	// If Reloading
-	if (Task == ETaskEnum::Reload) return;
+	if (Task == ETaskEnum::Reload  || WeaponStatsComponent->GetLoadedAmmo() == 0) return;
 
 	// If fire delay timer is still active
 	/// TODO: refactor so that clicking before fire delay ends re-engages firing on automatic weapons
@@ -426,8 +423,68 @@ void AYAW2GCharacter::StartFiring()
 }
 
 void AYAW2GCharacter::StopFiring()
-{	
+{
 	PerformTask(ETaskEnum::None);
+}
+
+void AYAW2GCharacter::StartSprinting()
+{
+	CurrentMaxWalkSpeed = 1200.0f;
+	UpdateWalkSpeed(CurrentMaxWalkSpeed);
+}
+
+void AYAW2GCharacter::StopSprinting()
+{	
+	CurrentMaxWalkSpeed = 600.0f;
+	UpdateWalkSpeed(CurrentMaxWalkSpeed);
+}
+
+void AYAW2GCharacter::UpdateWalkSpeed(float NewWalkSpeed)
+{
+	if (GetNetMode() == NM_Client)
+	{
+		ServerUpdateWalkSpeed(NewWalkSpeed);
+		return;
+	}
+	GetCharacterMovement()->MaxWalkSpeed = NewWalkSpeed;
+	OnRep_WalkSpeed();
+}
+
+void AYAW2GCharacter::ServerUpdateWalkSpeed_Implementation(float NewWalkSpeed)
+{	
+	GetCharacterMovement()->MaxWalkSpeed = NewWalkSpeed; 
+	OnRep_WalkSpeed();
+}
+
+bool AYAW2GCharacter::ServerUpdateWalkSpeed_Validate(float NewWalkSpeed)
+{
+	return true;
+}
+
+void AYAW2GCharacter::OnRep_WalkSpeed()
+{
+
+}
+
+void AYAW2GCharacter::StartCrouching()
+{
+	GetCharacterMovement()->bWantsToCrouch = true;
+}
+
+void AYAW2GCharacter::StopCrouching()
+{
+	GetCharacterMovement()->bWantsToCrouch = false;
+}
+
+void AYAW2GCharacter::PerformTask(ETaskEnum::Type NewTask)
+{
+	if (GetNetMode() == NM_Client)
+	{		
+		ServerPerformTask(NewTask);
+		return;
+	}
+	Task = NewTask;
+	OnRep_Task();
 }
 
 void AYAW2GCharacter::ServerPerformTask_Implementation(ETaskEnum::Type NewTask)
@@ -477,7 +534,7 @@ int AYAW2GCharacter::GetReserveAmmoCountBP() const
 
 float AYAW2GCharacter::GetReloadTimerPercentBP() const
 {
-	return (float)(GetWorldTimerManager().GetTimerRemaining(TimerHandle_Reload) / CurrentWeaponStats.ReloadDelay);
+	return (float)(GetWorldTimerManager().GetTimerRemaining(TimerHandle_Reload) * 1000 / CurrentWeaponStats.ReloadDelay) ; // Reload Delay is stored in ms
 }
 
 float AYAW2GCharacter::GetHealthPercent() const

@@ -374,7 +374,7 @@ void AYAW2GCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	FirstPersonCameraComponent->SetWorldRotation(GetViewRotation());
-	UE_LOG(LogTemp, Warning, TEXT("%s"), bShouldRegenStamina ? TEXT("TRUE") : TEXT("FALSE"));
+	//UE_LOG(LogTemp, Warning, TEXT("%s"), bShouldRegenStamina ? TEXT("TRUE") : TEXT("FALSE"));
 	if (bShouldRegenStamina && Stamina <= 99.9f)
 	{
 		Stamina += .1;

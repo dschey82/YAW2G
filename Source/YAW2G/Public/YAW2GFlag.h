@@ -6,18 +6,23 @@
 #include "GameFramework/Actor.h"
 #include "YAW2GFlag.generated.h"
 
-class ATriggerVolume;
+class UCapsuleComponent;
+
+UENUM()
+enum class EFlagState : uint8
+{	
+	Allied,
+	Axis,
+	Neutral,
+	Capturing,
+};
 
 UENUM()
 enum class ECaptureState : uint8
 {
-	Uncaptured,
 	Allied,
 	Axis,
-	CapturingAxis2Allied,
-	CapturingAllied2Axis,
-	CapturingNeutral2Axis,
-	CapturingNeutral2Allied
+	None,
 };
 
 UCLASS()
@@ -26,10 +31,12 @@ class YAW2G_API AYAW2GFlag : public AActor
 	GENERATED_BODY()
 
 	UPROPERTY(EditInstanceOnly)
-	ATriggerVolume * FlagTrigger = nullptr;
+	UCapsuleComponent * CapsuleComponent = nullptr;
 
-	UPROPERTY(EditDefaultsOnly, Category = Projectile)
-	TSubclassOf<class ATriggerVolume> TriggerVolumeClass;
+	EFlagState CurrentFlagState = EFlagState::Neutral;
+	ECaptureState CurrentCaptureState = ECaptureState::None;
+
+	FTimerHandle TimerHandle_FlagCapture;
 	
 public:	
 	// Sets default values for this actor's properties
@@ -39,10 +46,17 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	void SetFlagStateAxis();
+	void SetFlagStateAllied();
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	
+	UFUNCTION()
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 	
 };

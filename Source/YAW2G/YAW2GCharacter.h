@@ -74,6 +74,8 @@ class AYAW2GCharacter : public ACharacter
 
 	uint16 currentAmmoLoaded;
 
+	UPROPERTY(EditAnywhere)
+	bool bShouldRegenStamina;
 
 public:
 	AYAW2GCharacter();
@@ -113,6 +115,7 @@ public:
 protected:
 	FTimerHandle TimerHandle_Task;
 	FTimerHandle TimerHandle_Reload;
+	FTimerHandle TimerHandle_StaminaSprintLoop;
 
 	void StartFiring();
 	void StopFiring();
@@ -128,10 +131,10 @@ protected:
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerPerformTask(ETaskEnum::Type NewTask);
 	
-	void UpdateWalkSpeed(float NewWalkSpeed);
+	void UpdateWalkSpeed(float NewWalkSpeed, bool ShouldRegenStamina);
 
 	UFUNCTION(Server, Reliable, WithValidation)
-	void ServerUpdateWalkSpeed(float NewWalkSpeed);
+	void ServerUpdateWalkSpeed(float NewWalkSpeed, bool ShouldRegenStamina);
 	
 	/** Fires a projectile. */
 	void OnFire();
@@ -202,13 +205,24 @@ public:
 	void OnRep_Health();
 
 	UFUNCTION()
+	void OnRep_Stamina();
+
+	void ReduceStaminaByOne();
+
+	UFUNCTION()
 	void OnRep_WalkSpeed();
 
 	UPROPERTY(EditAnywhere, ReplicatedUsing=OnRep_Health)
 	float Health;
 
+	UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_Stamina)
+	float Stamina = 100.0f;
+
 	UFUNCTION(BlueprintCallable)
 	float GetHealthPercent() const;
+
+	UFUNCTION(BlueprintCallable)
+	float GetStaminaPercent() const;
 
 	float TakeDamage
 	(

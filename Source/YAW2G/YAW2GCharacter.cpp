@@ -374,6 +374,11 @@ void AYAW2GCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	FirstPersonCameraComponent->SetWorldRotation(GetViewRotation());
+	UE_LOG(LogTemp, Warning, TEXT("%s"), bShouldRegenStamina ? TEXT("TRUE") : TEXT("FALSE"));
+	if (bShouldRegenStamina && Stamina <= 99.9f)
+	{
+		Stamina += .1;
+	}
 }
 
 FRotator AYAW2GCharacter::GetViewRotation() const
@@ -406,12 +411,13 @@ void AYAW2GCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & Out
 	DOREPLIFETIME(AYAW2GCharacter, Task);
 	DOREPLIFETIME(AYAW2GCharacter, Health);
 	DOREPLIFETIME(AYAW2GCharacter, CurrentMaxWalkSpeed);
+	DOREPLIFETIME(AYAW2GCharacter, Stamina);
 }
 
 void AYAW2GCharacter::StartFiring()
 {
 	// If Reloading
-	if (Task == ETaskEnum::Reload  || WeaponStatsComponent->GetLoadedAmmo() == 0) return;
+	if (Task == ETaskEnum::Reload  || WeaponStatsComponent->GetLoadedAmmo() == 0 || !bShouldRegenStamina) return;
 
 	// If fire delay timer is still active
 	/// TODO: refactor so that clicking before fire delay ends re-engages firing on automatic weapons
@@ -430,33 +436,49 @@ void AYAW2GCharacter::StopFiring()
 void AYAW2GCharacter::StartSprinting()
 {
 	CurrentMaxWalkSpeed = 1200.0f;
-	UpdateWalkSpeed(CurrentMaxWalkSpeed);
+	bShouldRegenStamina = false;
+	UpdateWalkSpeed(CurrentMaxWalkSpeed, false);
 }
 
 void AYAW2GCharacter::StopSprinting()
 {	
 	CurrentMaxWalkSpeed = 600.0f;
-	UpdateWalkSpeed(CurrentMaxWalkSpeed);
+	UpdateWalkSpeed(CurrentMaxWalkSpeed, true);	
 }
 
-void AYAW2GCharacter::UpdateWalkSpeed(float NewWalkSpeed)
+void AYAW2GCharacter::UpdateWalkSpeed(float NewWalkSpeed, bool ShouldRegen)
 {
 	if (GetNetMode() == NM_Client)
 	{
-		ServerUpdateWalkSpeed(NewWalkSpeed);
+		bShouldRegenStamina = ShouldRegen;
+		GetWorldTimerManager().ClearTimer(TimerHandle_StaminaSprintLoop);
+		if (!ShouldRegen) Task = ETaskEnum::None;
+		ServerUpdateWalkSpeed(NewWalkSpeed, ShouldRegen);
 		return;
 	}
 	GetCharacterMovement()->MaxWalkSpeed = NewWalkSpeed;
+	bShouldRegenStamina = ShouldRegen;
+	if (!ShouldRegen) Task = ETaskEnum::None;
 	OnRep_WalkSpeed();
 }
 
-void AYAW2GCharacter::ServerUpdateWalkSpeed_Implementation(float NewWalkSpeed)
+void AYAW2GCharacter::ServerUpdateWalkSpeed_Implementation(float NewWalkSpeed, bool ShouldRegen)
 {	
-	GetCharacterMovement()->MaxWalkSpeed = NewWalkSpeed; 
+	GetCharacterMovement()->MaxWalkSpeed = NewWalkSpeed;
+	bShouldRegenStamina = ShouldRegen;
+	if (ShouldRegen)
+	{
+		GetWorldTimerManager().ClearTimer(TimerHandle_StaminaSprintLoop);
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(TimerHandle_StaminaSprintLoop, this, &AYAW2GCharacter::ReduceStaminaByOne, .05, true, .05);
+		Task = ETaskEnum::None;
+	}	
 	OnRep_WalkSpeed();
 }
 
-bool AYAW2GCharacter::ServerUpdateWalkSpeed_Validate(float NewWalkSpeed)
+bool AYAW2GCharacter::ServerUpdateWalkSpeed_Validate(float NewWalkSpeed, bool ShouldRegen)
 {
 	return true;
 }
@@ -498,6 +520,11 @@ bool AYAW2GCharacter::ServerPerformTask_Validate(ETaskEnum::Type NewTask)
 	return true;
 }
 
+float AYAW2GCharacter::GetStaminaPercent() const
+{
+	return Stamina / 100.f;
+}
+
 float AYAW2GCharacter::TakeDamage(float DamageAmount,struct FDamageEvent const & DamageEvent,class AController * EventInstigator,AActor * DamageCauser)
 {
 	Health -= DamageAmount;
@@ -520,6 +547,16 @@ float AYAW2GCharacter::TakeDamage(float DamageAmount,struct FDamageEvent const &
 void AYAW2GCharacter::OnRep_Health()
 {
 
+}
+
+void AYAW2GCharacter::OnRep_Stamina()
+{
+
+}
+
+void AYAW2GCharacter::ReduceStaminaByOne()
+{
+	if (--Stamina < 30.0f) StopSprinting();
 }
 
 int AYAW2GCharacter::GetAmmoCountBP() const

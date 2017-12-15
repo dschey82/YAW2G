@@ -93,7 +93,8 @@ AYAW2GCharacter::AYAW2GCharacter()
 	WeaponStatsComponent = CreateDefaultSubobject<UWeaponStatsComponent>(TEXT("WeaponStatsComponent"));
 
 	GetCapsuleComponent()->bGenerateOverlapEvents = true;
-
+	bShouldRegenStamina = true;
+	Stamina = 100.0f;
 	Health = 100.0f;
 
 }
@@ -410,21 +411,18 @@ void AYAW2GCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & Out
 
 	DOREPLIFETIME(AYAW2GCharacter, Task);
 	DOREPLIFETIME(AYAW2GCharacter, Health);
-	DOREPLIFETIME(AYAW2GCharacter, CurrentMaxWalkSpeed);
 	DOREPLIFETIME(AYAW2GCharacter, Stamina);
 }
 
 void AYAW2GCharacter::StartFiring()
 {
-	// If Reloading
-	if (Task == ETaskEnum::Reload  || WeaponStatsComponent->GetLoadedAmmo() == 0 || !bShouldRegenStamina) return;
+	// If Reloading, out of ammo, sprinting, or weapon is on firing cooldown, don't fire
+	if (	Task == ETaskEnum::Reload
+		||	WeaponStatsComponent->GetLoadedAmmo() == 0
+		||	!bShouldRegenStamina
+		||	(TimerHandle_Task.IsValid() && GetWorldTimerManager().GetTimerRemaining(TimerHandle_Task) > 0.f)
+		)	return;
 
-	// If fire delay timer is still active
-	/// TODO: refactor so that clicking before fire delay ends re-engages firing on automatic weapons
-	if (TimerHandle_Task.IsValid() && GetWorldTimerManager().GetTimerRemaining(TimerHandle_Task) > 0.f)
-	{
-		return;
-	}	
 	PerformTask(ETaskEnum::Fire);
 }
 
@@ -435,36 +433,32 @@ void AYAW2GCharacter::StopFiring()
 
 void AYAW2GCharacter::StartSprinting()
 {
-	CurrentMaxWalkSpeed = 1200.0f;
-	bShouldRegenStamina = false;
-	UpdateWalkSpeed(CurrentMaxWalkSpeed, false);
+	UpdateWalkSpeed(2, false);
 }
 
 void AYAW2GCharacter::StopSprinting()
 {	
-	CurrentMaxWalkSpeed = 600.0f;
-	UpdateWalkSpeed(CurrentMaxWalkSpeed, true);	
+	if (!bShouldRegenStamina) UpdateWalkSpeed(0.5, true);	
 }
 
 void AYAW2GCharacter::UpdateWalkSpeed(float NewWalkSpeed, bool ShouldRegen)
 {
 	if (GetNetMode() == NM_Client)
-	{
-		bShouldRegenStamina = ShouldRegen;
-		GetWorldTimerManager().ClearTimer(TimerHandle_StaminaSprintLoop);
-		if (!ShouldRegen) Task = ETaskEnum::None;
+	{		
 		ServerUpdateWalkSpeed(NewWalkSpeed, ShouldRegen);
 		return;
 	}
-	GetCharacterMovement()->MaxWalkSpeed = NewWalkSpeed;
+
+	// Listenserver only
+	GetCharacterMovement()->MaxWalkSpeed *= NewWalkSpeed;
 	bShouldRegenStamina = ShouldRegen;
-	if (!ShouldRegen) Task = ETaskEnum::None;
-	OnRep_WalkSpeed();
+	GetWorldTimerManager().ClearTimer(TimerHandle_StaminaSprintLoop);
+	if (!ShouldRegen) Task = ETaskEnum::None;	
 }
 
 void AYAW2GCharacter::ServerUpdateWalkSpeed_Implementation(float NewWalkSpeed, bool ShouldRegen)
 {	
-	GetCharacterMovement()->MaxWalkSpeed = NewWalkSpeed;
+	GetCharacterMovement()->MaxWalkSpeed *= NewWalkSpeed;
 	bShouldRegenStamina = ShouldRegen;
 	if (ShouldRegen)
 	{
@@ -474,18 +468,12 @@ void AYAW2GCharacter::ServerUpdateWalkSpeed_Implementation(float NewWalkSpeed, b
 	{
 		GetWorldTimerManager().SetTimer(TimerHandle_StaminaSprintLoop, this, &AYAW2GCharacter::ReduceStaminaByOne, .05, true, .05);
 		Task = ETaskEnum::None;
-	}	
-	OnRep_WalkSpeed();
+	}
 }
 
 bool AYAW2GCharacter::ServerUpdateWalkSpeed_Validate(float NewWalkSpeed, bool ShouldRegen)
 {
 	return true;
-}
-
-void AYAW2GCharacter::OnRep_WalkSpeed()
-{
-
 }
 
 void AYAW2GCharacter::StartCrouching()
@@ -505,6 +493,8 @@ void AYAW2GCharacter::PerformTask(ETaskEnum::Type NewTask)
 		ServerPerformTask(NewTask);
 		return;
 	}
+
+	// Listenserver only
 	Task = NewTask;
 	OnRep_Task();
 }

@@ -5,6 +5,8 @@
 #include "Components/CapsuleComponent.h"
 #include "YAW2GCharacter.h"
 #include "MyPlayerState.h"
+#include "GameFramework/GameModeBase.h"
+#include "GameFramework/GameMode.h"
 
 
 // Sets default values
@@ -40,9 +42,6 @@ void AYAW2GFlag::Tick(float DeltaTime)
 
 void AYAW2GFlag::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Hello World!"));
-	UE_LOG(LogTemp, Warning, TEXT("Overlapping Actor's Team Status: %d"), (uint8)Cast<AMyPlayerState>(Cast<AYAW2GCharacter>(OtherActor)->PlayerState)->bTeamAxis);
-	UE_LOG(LogTemp, Warning, TEXT("Flag's Current Capture Status: %d"), (uint8)CurrentFlagState);
 	// Check state of flag capture & compare to team ownership of triggering player
 	// If player's team matches the current flag captured status, then do nothing
 	if ((uint8)Cast<AMyPlayerState>(Cast<AYAW2GCharacter>(OtherActor)->PlayerState)->bTeamAxis == (uint8)CurrentFlagState) return;
@@ -109,11 +108,20 @@ void AYAW2GFlag::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* Other
 void AYAW2GFlag::SetFlagStateAxis()
 {
 	CurrentFlagState = EFlagState::Axis;
-	UE_LOG(LogTemp, Warning, TEXT("Axis have captured the flag!"));
+	UE_LOG(LogTemp, Warning, TEXT("Axis Forces have captured the flag!"));
+	if (GetNetMode() == NM_DedicatedServer)
+	{
+		GetWorld()->GetAuthGameMode()->ProcessServerTravel("/Game/FirstPersonCPP/Maps/FirstPersonExampleMap?dedicated", true);
+	}
+	
 }
 
 void AYAW2GFlag::SetFlagStateAllied()
 {
 	CurrentFlagState = EFlagState::Allied;
 	UE_LOG(LogTemp, Warning, TEXT("Allied Forces have captured the flag!"));
+	if (GetNetMode() == NM_DedicatedServer)
+	{
+		GetWorld()->GetAuthGameMode()->ProcessServerTravel("/Game/FirstPersonCPP/Maps/FirstPersonExampleMap?dedicated", true);
+	}
 }

@@ -69,13 +69,10 @@ class AYAW2GCharacter : public ACharacter
 	UPROPERTY(ReplicatedUsing=OnRep_Task)
 	TEnumAsByte<ETaskEnum::Type> Task;
 
-	UPROPERTY(ReplicatedUsing = OnRep_WalkSpeed)
-	float CurrentMaxWalkSpeed;
-
 	uint16 currentAmmoLoaded;
 
 	UPROPERTY(EditAnywhere)
-	bool bShouldRegenStamina;
+	bool bShouldRegenStamina = true;
 
 public:
 	AYAW2GCharacter();
@@ -208,9 +205,6 @@ public:
 	void OnRep_Stamina();
 
 	void ReduceStaminaByOne();
-
-	UFUNCTION()
-	void OnRep_WalkSpeed();
 
 	UPROPERTY(EditAnywhere, ReplicatedUsing=OnRep_Health)
 	float Health;

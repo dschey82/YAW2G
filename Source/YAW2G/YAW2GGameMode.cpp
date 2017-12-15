@@ -20,9 +20,7 @@ AYAW2GGameMode::AYAW2GGameMode()
 
 	// use our custom HUD class
 	HUDClass = AYAW2GHUD::StaticClass();
-
 	PlayerControllerClass = AMyPlayerController::StaticClass();
-
 	PlayerStateClass = AMyPlayerState::StaticClass();
 }
 

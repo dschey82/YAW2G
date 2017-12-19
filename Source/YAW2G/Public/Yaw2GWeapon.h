@@ -38,8 +38,5 @@ protected:
 
 public:	
 	FSWeaponStats GetWeaponStats() const;
-	EAmmoType GetWeaponAmmoType() const;
-
-	
 	
 };

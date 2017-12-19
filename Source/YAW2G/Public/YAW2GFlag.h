@@ -25,17 +25,16 @@ enum class ECaptureState : uint8
 	None,
 };
 
-UCLASS()
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFlagCapturedEvent);
+
+UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class YAW2G_API AYAW2GFlag : public AActor
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditInstanceOnly)
 	UCapsuleComponent * CapsuleComponent = nullptr;
-
-	EFlagState CurrentFlagState = EFlagState::Neutral;
-	ECaptureState CurrentCaptureState = ECaptureState::None;
-
+	
 	FTimerHandle TimerHandle_FlagCapture;
 	
 public:	
@@ -49,6 +48,7 @@ protected:
 	void SetFlagStateAxis();
 	void SetFlagStateAllied();
 
+	
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -58,5 +58,16 @@ public:
 
 	UFUNCTION()
 	void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-	
+
+	UFUNCTION(BlueprintCallable)
+	float GetFlagCaptureProgress() const;
+		
+	UPROPERTY(BlueprintReadOnly)
+	EFlagState CurrentFlagState;
+
+	UPROPERTY(BlueprintReadOnly)
+	ECaptureState CurrentCaptureState;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnFlagCapturedEvent OnFlagCapturedEvent;
 };

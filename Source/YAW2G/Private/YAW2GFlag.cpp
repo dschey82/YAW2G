@@ -30,14 +30,15 @@ AYAW2GFlag::AYAW2GFlag()
 void AYAW2GFlag::BeginPlay()
 {
 	Super::BeginPlay();
+
+	CurrentFlagState = EFlagState::Neutral;
+	CurrentCaptureState = ECaptureState::None;
 }
 
 // Called every frame
 void AYAW2GFlag::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-
 }
 
 void AYAW2GFlag::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -91,7 +92,7 @@ void AYAW2GFlag::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* Other
 	if (AxisActors > 0 && AlliedActors == 0)
 	{
 		CurrentCaptureState = ECaptureState::Axis;
-		GetWorldTimerManager().SetTimer(TimerHandle_FlagCapture, this, &AYAW2GFlag::SetFlagStateAxis, 3.0f);
+		GetWorldTimerManager().SetTimer(TimerHandle_FlagCapture, this, &AYAW2GFlag::SetFlagStateAxis, 3.0f);		
 	}
 	else if (AxisActors == 0 && AlliedActors > 0)
 	{
@@ -105,23 +106,34 @@ void AYAW2GFlag::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* Other
 	}
 }
 
+float AYAW2GFlag::GetFlagCaptureProgress() const
+{
+	if (TimerHandle_FlagCapture.IsValid()) {
+		return GetWorldTimerManager().GetTimerElapsed(TimerHandle_FlagCapture) / 3.0f;
+	}
+	return 0.f;
+}
+
 void AYAW2GFlag::SetFlagStateAxis()
 {
-	CurrentFlagState = EFlagState::Axis;
-	UE_LOG(LogTemp, Warning, TEXT("Axis Forces have captured the flag!"));
 	if (GetNetMode() == NM_DedicatedServer)
 	{
-		GetWorld()->GetAuthGameMode()->ProcessServerTravel("/Game/FirstPersonCPP/Maps/FirstPersonExampleMap?dedicated", true);
-	}
+		CurrentFlagState = EFlagState::Axis;
+		CurrentCaptureState = ECaptureState::None;
+		UE_LOG(LogTemp, Warning, TEXT("Axis Forces have captured the flag!"));
 	
+		OnFlagCapturedEvent.Broadcast();
+	}	
 }
 
 void AYAW2GFlag::SetFlagStateAllied()
 {
-	CurrentFlagState = EFlagState::Allied;
-	UE_LOG(LogTemp, Warning, TEXT("Allied Forces have captured the flag!"));
 	if (GetNetMode() == NM_DedicatedServer)
 	{
-		GetWorld()->GetAuthGameMode()->ProcessServerTravel("/Game/FirstPersonCPP/Maps/FirstPersonExampleMap?dedicated", true);
+		CurrentFlagState = EFlagState::Allied;
+		CurrentCaptureState = ECaptureState::None;
+		UE_LOG(LogTemp, Warning, TEXT("Allied Forces have captured the flag!"));
+	
+		OnFlagCapturedEvent.Broadcast();
 	}
 }

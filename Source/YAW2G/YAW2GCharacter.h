@@ -9,6 +9,7 @@
 
 class UInputComponent;
 class UInventoryComponent;
+class AYAW2GFlag;
 
 UENUM()
 namespace ETaskEnum
@@ -20,6 +21,8 @@ namespace ETaskEnum
 		Reload,
 	};
 }
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FUpdateFlagElementsBP);
 
 UCLASS(config=Game)
 class AYAW2GCharacter : public ACharacter
@@ -237,5 +240,16 @@ public:
 	UFUNCTION(BlueprintCallable)
 	float GetReloadTimerPercentBP() const;
 
+	UFUNCTION(BlueprintCallable)
+	float GetFlagCapProgress(AYAW2GFlag * pFlag) const;
+
+	UFUNCTION(BlueprintCallable)
+	void EventTestFunc();
+
+	UFUNCTION()
+	void UpdateFlagElements();
+
+	UPROPERTY(BlueprintAssignable)
+	FUpdateFlagElementsBP UpdateFlagElementsBP;
 };
 

@@ -10,6 +10,7 @@
 #include "MyPlayerStart.h"
 #include "EngineUtils.h"
 #include "GameFramework/Actor.h"
+#include "Yaw2gGameStateBase.h"
 
 AYAW2GGameMode::AYAW2GGameMode()
 	: Super()
@@ -17,6 +18,7 @@ AYAW2GGameMode::AYAW2GGameMode()
 	// set default pawn class to our Blueprinted character
 	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnClassFinder(TEXT("/Game/FirstPersonCPP/Blueprints/FirstPersonCharacter"));
 	DefaultPawnClass = PlayerPawnClassFinder.Class;
+	GameStateClass = AYaw2gGameStateBase::StaticClass();
 
 	// use our custom HUD class
 	HUDClass = AYAW2GHUD::StaticClass();

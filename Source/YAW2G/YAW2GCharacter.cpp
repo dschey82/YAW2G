@@ -15,11 +15,18 @@
 #include "InventoryComponent.h"
 #include "WeaponStatsComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "YAW2GFlag.h"
+#include "Yaw2gGameStateBase.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
 //////////////////////////////////////////////////////////////////////////
 // AYAW2GCharacter
+
+void AYAW2GCharacter::UpdateFlagElements()
+{
+	UpdateFlagElementsBP.Broadcast();
+}
 
 AYAW2GCharacter::AYAW2GCharacter()
 {
@@ -95,8 +102,7 @@ AYAW2GCharacter::AYAW2GCharacter()
 	GetCapsuleComponent()->bGenerateOverlapEvents = true;
 	bShouldRegenStamina = true;
 	Stamina = 100.0f;
-	Health = 100.0f;
-
+	Health = 100.0f;	
 }
 
 void AYAW2GCharacter::BeginPlay()
@@ -122,6 +128,8 @@ void AYAW2GCharacter::BeginPlay()
 	}
 
 	if (Controller) Controller->SetControlRotation(GetActorRotation());
+
+	Cast<AYaw2gGameStateBase>(GetWorld()->GetGameState())->UpdateLocalFlags.AddDynamic(this, &AYAW2GCharacter::UpdateFlagElements);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -433,24 +441,24 @@ void AYAW2GCharacter::StopFiring()
 
 void AYAW2GCharacter::StartSprinting()
 {
-	UpdateWalkSpeed(2, false);
+	UpdateWalkSpeed(1200.f, false);
 }
 
 void AYAW2GCharacter::StopSprinting()
-{	
-	if (!bShouldRegenStamina) UpdateWalkSpeed(0.5, true);	
+{
+	UpdateWalkSpeed(600.f, true);	
 }
 
 void AYAW2GCharacter::UpdateWalkSpeed(float NewWalkSpeed, bool ShouldRegen)
 {
 	if (GetNetMode() == NM_Client)
-	{		
+	{	
 		ServerUpdateWalkSpeed(NewWalkSpeed, ShouldRegen);
 		return;
 	}
 
 	// Listenserver only
-	GetCharacterMovement()->MaxWalkSpeed *= NewWalkSpeed;
+	GetCharacterMovement()->MaxWalkSpeed = NewWalkSpeed;
 	bShouldRegenStamina = ShouldRegen;
 	GetWorldTimerManager().ClearTimer(TimerHandle_StaminaSprintLoop);
 	if (!ShouldRegen) Task = ETaskEnum::None;	
@@ -458,7 +466,7 @@ void AYAW2GCharacter::UpdateWalkSpeed(float NewWalkSpeed, bool ShouldRegen)
 
 void AYAW2GCharacter::ServerUpdateWalkSpeed_Implementation(float NewWalkSpeed, bool ShouldRegen)
 {	
-	GetCharacterMovement()->MaxWalkSpeed *= NewWalkSpeed;
+	GetCharacterMovement()->MaxWalkSpeed = NewWalkSpeed;
 	bShouldRegenStamina = ShouldRegen;
 	if (ShouldRegen)
 	{
@@ -562,6 +570,16 @@ int AYAW2GCharacter::GetReserveAmmoCountBP() const
 float AYAW2GCharacter::GetReloadTimerPercentBP() const
 {
 	return (float)(GetWorldTimerManager().GetTimerRemaining(TimerHandle_Reload) * 1000 / CurrentWeaponStats.ReloadDelay) ; // Reload Delay is stored in ms
+}
+
+float AYAW2GCharacter::GetFlagCapProgress(AYAW2GFlag * pFlag) const
+{
+	return pFlag->GetFlagCaptureProgress();
+}
+
+void AYAW2GCharacter::EventTestFunc()
+{
+	
 }
 
 float AYAW2GCharacter::GetHealthPercent() const

@@ -7,23 +7,38 @@
 #include "MyPlayerState.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/GameMode.h"
+#include "UnrealNetwork.h"
 
+
+
+void AYAW2GFlag::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AYAW2GFlag, CurrentFlagState);
+	DOREPLIFETIME(AYAW2GFlag, CurrentCaptureState);
+}
 
 // Sets default values
 AYAW2GFlag::AYAW2GFlag()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
 
 	CapsuleComponent = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CapsuleComponent"));
-	SetRootComponent(CapsuleComponent);
-	CapsuleComponent->bGenerateOverlapEvents = true;
-	CapsuleComponent->SetCapsuleRadius(200.0f);
-	CapsuleComponent->SetCapsuleHalfHeight(300.0f);
-	CapsuleComponent->bHiddenInGame = false;
-	CapsuleComponent->OnComponentBeginOverlap.AddDynamic(this, &AYAW2GFlag::OnOverlapBegin);
-	CapsuleComponent->OnComponentEndOverlap.AddDynamic(this, &AYAW2GFlag::OnOverlapEnd);
-
+	if (CapsuleComponent)
+	{
+		SetRootComponent(CapsuleComponent);
+		CapsuleComponent->bGenerateOverlapEvents = true;
+		CapsuleComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
+		CapsuleComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+		CapsuleComponent->SetCapsuleRadius(200.0f);
+		CapsuleComponent->SetCapsuleHalfHeight(300.0f);
+		CapsuleComponent->bHiddenInGame = false;
+		CapsuleComponent->OnComponentBeginOverlap.AddDynamic(this, &AYAW2GFlag::OnOverlapBegin);
+		CapsuleComponent->OnComponentEndOverlap.AddDynamic(this, &AYAW2GFlag::OnOverlapEnd);
+	}
 }
 
 // Called when the game starts or when spawned
@@ -42,10 +57,10 @@ void AYAW2GFlag::Tick(float DeltaTime)
 }
 
 void AYAW2GFlag::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
+{	
 	// Check state of flag capture & compare to team ownership of triggering player
 	// If player's team matches the current flag captured status, then do nothing
-	if ((uint8)Cast<AMyPlayerState>(Cast<AYAW2GCharacter>(OtherActor)->PlayerState)->bTeamAxis == (uint8)CurrentFlagState) return;
+	if ((uint8)(Cast<AMyPlayerState>(Cast<AYAW2GCharacter>(OtherActor)->PlayerState)->bTeamAxis) == (uint8)CurrentFlagState) return;
 
 	// Check to see team ownership of all actors currently overlapping
 	TSet<AActor*> OverlappingActors;
@@ -58,7 +73,7 @@ void AYAW2GFlag::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* Oth
 		if (Cast<AMyPlayerState>(Cast<AYAW2GCharacter>(actor)->PlayerState)->bTeamAxis) ++AxisActors;
 		else ++AlliedActors;
 	}
-	
+
 	if (AxisActors > 0 && AlliedActors == 0)
 	{
 		CurrentCaptureState = ECaptureState::Axis;
@@ -73,11 +88,11 @@ void AYAW2GFlag::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* Oth
 	{
 		GetWorldTimerManager().ClearTimer(TimerHandle_FlagCapture);
 		return;
-	}	
+	}
 }
 
 void AYAW2GFlag::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
+{	
 	TSet<AActor*> OverlappingActors;
 	GetOverlappingActors(OverlappingActors, AYAW2GCharacter::StaticClass());
 	int AxisActors = 0;
@@ -92,7 +107,7 @@ void AYAW2GFlag::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* Other
 	if (AxisActors > 0 && AlliedActors == 0)
 	{
 		CurrentCaptureState = ECaptureState::Axis;
-		GetWorldTimerManager().SetTimer(TimerHandle_FlagCapture, this, &AYAW2GFlag::SetFlagStateAxis, 3.0f);		
+		GetWorldTimerManager().SetTimer(TimerHandle_FlagCapture, this, &AYAW2GFlag::SetFlagStateAxis, 3.0f);
 	}
 	else if (AxisActors == 0 && AlliedActors > 0)
 	{

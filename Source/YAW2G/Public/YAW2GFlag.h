@@ -36,6 +36,8 @@ class YAW2G_API AYAW2GFlag : public AActor
 	UCapsuleComponent * CapsuleComponent = nullptr;
 	
 	FTimerHandle TimerHandle_FlagCapture;
+
+	void GetLifetimeReplicatedProps(TArray < FLifetimeProperty > & OutLifetimeProps) const override;
 	
 public:	
 	// Sets default values for this actor's properties
@@ -62,10 +64,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	float GetFlagCaptureProgress() const;
 		
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly, Replicated)
 	EFlagState CurrentFlagState;
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly, Replicated)
 	ECaptureState CurrentCaptureState;
 
 	UPROPERTY(BlueprintAssignable)

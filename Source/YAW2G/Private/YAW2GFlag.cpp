@@ -30,12 +30,12 @@ AYAW2GFlag::AYAW2GFlag()
 	if (CapsuleComponent)
 	{
 		SetRootComponent(CapsuleComponent);
-		CapsuleComponent->bGenerateOverlapEvents = true;
+		CapsuleComponent->SetGenerateOverlapEvents(true);
 		CapsuleComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
 		CapsuleComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 		CapsuleComponent->SetCapsuleRadius(200.0f);
 		CapsuleComponent->SetCapsuleHalfHeight(300.0f);
-		CapsuleComponent->bHiddenInGame = false;
+		CapsuleComponent->SetHiddenInGame(false);		
 		CapsuleComponent->OnComponentBeginOverlap.AddDynamic(this, &AYAW2GFlag::OnOverlapBegin);
 		CapsuleComponent->OnComponentEndOverlap.AddDynamic(this, &AYAW2GFlag::OnOverlapEnd);
 	}
@@ -60,7 +60,7 @@ void AYAW2GFlag::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* Oth
 {	
 	// Check state of flag capture & compare to team ownership of triggering player
 	// If player's team matches the current flag captured status, then do nothing
-	if ((uint8)(Cast<AMyPlayerState>(Cast<AYAW2GCharacter>(OtherActor)->PlayerState)->bTeamAxis) == (uint8)CurrentFlagState) return;
+	if ((uint8)(Cast<AMyPlayerState>(Cast<AYAW2GCharacter>(OtherActor)->GetPlayerState())->bTeamAxis) == (uint8)CurrentFlagState) return;
 
 	// Check to see team ownership of all actors currently overlapping
 	TSet<AActor*> OverlappingActors;
@@ -70,7 +70,7 @@ void AYAW2GFlag::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* Oth
 
 	for (auto actor : OverlappingActors)
 	{
-		if (Cast<AMyPlayerState>(Cast<AYAW2GCharacter>(actor)->PlayerState)->bTeamAxis) ++AxisActors;
+		if (Cast<AMyPlayerState>(Cast<AYAW2GCharacter>(actor)->GetPlayerState())->bTeamAxis) ++AxisActors;
 		else ++AlliedActors;
 	}
 
@@ -100,7 +100,7 @@ void AYAW2GFlag::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* Other
 
 	for (auto actor : OverlappingActors)
 	{
-		if (Cast<AMyPlayerState>(Cast<AYAW2GCharacter>(actor)->PlayerState)->bTeamAxis) ++AxisActors;
+		if (Cast<AMyPlayerState>(Cast<AYAW2GCharacter>(actor)->GetPlayerState())->bTeamAxis) ++AxisActors;
 		else ++AlliedActors;
 	}
 

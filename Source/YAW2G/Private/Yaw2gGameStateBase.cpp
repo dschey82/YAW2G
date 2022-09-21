@@ -6,6 +6,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "UnrealNetwork.h"
 
+AYaw2gGameStateBase::AYaw2gGameStateBase()
+{
+	SetReplicates(true);
+}
+
 void AYaw2gGameStateBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

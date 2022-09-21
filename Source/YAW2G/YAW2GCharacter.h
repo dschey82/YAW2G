@@ -143,7 +143,7 @@ protected:
 	void EndReload();
 
 	/** Resets HMD orientation and position in VR. */
-	void OnResetVR();
+	//void OnResetVR();
 
 	/** Handles moving forward/backward */
 	void MoveForward(float Val);	
@@ -173,7 +173,7 @@ protected:
 	};
 	void BeginTouch(const ETouchIndex::Type FingerIndex, const FVector Location);
 	void EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location);
-	void TouchUpdate(const ETouchIndex::Type FingerIndex, const FVector Location);
+	//void TouchUpdate(const ETouchIndex::Type FingerIndex, const FVector Location);
 	TouchData	TouchItem;
 	
 protected:
@@ -212,7 +212,7 @@ public:
 	UPROPERTY(EditAnywhere, ReplicatedUsing=OnRep_Health)
 	float Health;
 
-	UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_Stamina)
+	UPROPERTY(EditAnywhere, ReplicatedUsing=OnRep_Stamina)
 	float Stamina = 100.0f;
 
 	UFUNCTION(BlueprintCallable)
@@ -242,9 +242,6 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	float GetFlagCapProgress(AYAW2GFlag * pFlag) const;
-
-	UFUNCTION(BlueprintCallable)
-	void EventTestFunc();
 
 	UFUNCTION()
 	void UpdateFlagElements();

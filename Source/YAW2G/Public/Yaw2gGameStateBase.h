@@ -16,10 +16,10 @@ UCLASS()
 class YAW2G_API AYaw2gGameStateBase : public AGameStateBase
 {
 	GENERATED_BODY()
-	
-	void PostInitializeComponents() override;
 
-	FTimerHandle TimerHandle_TrackFlagCap;
+	AYaw2gGameStateBase();
+
+	void PostInitializeComponents() override;
 
 public:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const override;
@@ -35,9 +35,6 @@ public:
 
 	UFUNCTION()
 	void OnRep_FlagState();
-
-	int AxisPoints;
-	int AlliedPoints;
 	
 	UPROPERTY(BlueprintAssignable)
 	FUpdateLocalFlags UpdateLocalFlags;

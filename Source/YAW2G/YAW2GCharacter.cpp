@@ -178,9 +178,9 @@ void AYAW2GCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInp
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &AYAW2GCharacter::StopCrouching);
 
 	// Enable touchscreen input
-	EnableTouchscreenMovement(PlayerInputComponent);
+	//EnableTouchscreenMovement(PlayerInputComponent);
 
-	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AYAW2GCharacter::OnResetVR);
+	//PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AYAW2GCharacter::OnResetVR);
 
 	// Bind movement events
 	PlayerInputComponent->BindAxis("MoveForward", this, &AYAW2GCharacter::MoveForward);
@@ -266,10 +266,10 @@ void AYAW2GCharacter::EndReload()
 	Task = ETaskEnum::None;
 }
 
-void AYAW2GCharacter::OnResetVR()
-{
-	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
-}
+//void AYAW2GCharacter::OnResetVR()
+//{
+//	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
+//}
 
 void AYAW2GCharacter::BeginTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
 {
@@ -576,11 +576,6 @@ float AYAW2GCharacter::GetReloadTimerPercentBP() const
 float AYAW2GCharacter::GetFlagCapProgress(AYAW2GFlag * pFlag) const
 {
 	return pFlag->GetFlagCaptureProgress();
-}
-
-void AYAW2GCharacter::EventTestFunc()
-{
-	
 }
 
 float AYAW2GCharacter::GetHealthPercent() const
